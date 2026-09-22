@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Multi-harness POC</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>Multi-harness POC</h1>
+      <span class="environment">Trigger.dev · raw tasks + sessions</span>
+      <span id="connection" class="connection" role="status">Connecting</span>
+    </header>
+    <div class="toolbar">
+      <label for="mobile-history">Conversation</label>
+      <select id="mobile-history" aria-label="Conversation history"></select>
+      <button id="new" type="button">New conversation</button>
+      <button id="close" type="button" hidden>Close conversation</button>
+    </div>
+    <main>
+      <section class="chat" aria-label="Chat">
+        <div class="panel-heading" id="chat-label">New conversation</div>
+        <button id="load-older" type="button" hidden>
+          Load earlier messages
+        </button>
+        <div id="messages" aria-label="Conversation">
+          <div class="empty">
+            <p>No messages. Select a harness and send a request.</p>
+            <button id="starter" type="button">Read README.md</button>
+          </div>
+        </div>
+        <form id="composer">
+          <fieldset>
+            <legend>Harness</legend>
+            <label
+              ><input type="radio" name="harness" value="claude" checked />
+              Claude Code</label
+            >
+            <label
+              ><input type="radio" name="harness" value="codex" /> Codex</label
+            >
+            <label><input type="radio" name="harness" value="pi" /> Pi</label>
+          </fieldset>
+          <label class="sr-only" for="prompt">Message</label>
+          <textarea
+            id="prompt"
+            placeholder="Enter a request…"
+            maxlength="64000"
+            rows="3"
+          ></textarea>
+          <div class="composer-foot">
+            <span id="hint">Each harness keeps its own history.</span>
+            <button id="stop" type="button" hidden>Stop</button>
+            <button id="send" type="submit">Send</button>
+          </div>
+          <p id="cache-warning" class="muted" role="status" hidden>
+            Browser storage is unavailable. Keep this page open until delivery
+            is confirmed; drafts and unsent requests cannot survive a reload.
+          </p>
+          <div id="error" role="alert" hidden></div>
+          <span id="a11y-status" class="sr-only" role="status"></span>
+        </form>
+      </section>
+      <aside class="inspector" aria-label="Session and activity">
+        <details open>
+          <summary>Session details</summary>
+          <dl>
+            <dt>Session</dt>
+            <dd id="session-id">Not started</dd>
+            <dt>Run</dt>
+            <dd id="run-id">—</dd>
+            <dt>Context</dt>
+            <dd id="context-count">Completed prompts and answers</dd>
+          </dl>
+          <p class="muted">
+            Full history saved. Each harness resumes its own native session.
+          </p>
+        </details>
+        <section class="activity" aria-label="Activity">
+          <h2>Activity</h2>
+          <div id="activity-list"><p class="muted">No activity.</p></div>
+        </section>
+      </aside>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

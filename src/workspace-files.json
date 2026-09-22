@@ -1,0 +1,4 @@
+{
+  "README.md": "# Release Notes Demo\n\nRelease Notes Demo is a sample release-notes service. Its mascot is an otter.\n\nStart with src/releases.ts to find how release notes are formatted.\n",
+  "src/releases.ts": "export type Release = { version: string; changes: string[] };\n\nexport function formatRelease(release: Release): string {\n  return [`# ${release.version}`, ...release.changes.map((change) => `- ${change}`)].join(\"\\n\");\n}\n"
+}

@@ -1,0 +1,46 @@
+{
+  "name": "multi-harness-poc",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "doctor": "node --env-file-if-exists=.env scripts/doctor.mjs",
+    "login": "trigger login --profile multi-harness-poc",
+    "worker": "trigger dev --profile multi-harness-poc --env-file .env",
+    "dev": "tsx --env-file=.env src/server.ts",
+    "deploy": "trigger deploy --profile multi-harness-poc --env-file .env",
+    "workspace": "node scripts/prepare-workspace.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm run typecheck && pnpm run test",
+    "migrate": "tsx --env-file=.env scripts/migrate.ts",
+    "format": "prettier --write src public scripts \"*.test.*\" trigger.config.ts package.json tsconfig.json README.md",
+    "juicefs:install": "node scripts/install-juicefs.mjs",
+    "test:juicefs": "JUICEFS_TEST_BINARY=./juicefs-bin/juicefs vitest run src/juicefs.test.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.274",
+    "@aws-sdk/client-s3": "3.1135.0",
+    "@earendil-works/pi-ai": "0.85.1",
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@openai/codex-sdk": "0.154.0",
+    "@trigger.dev/build": "4.6.3",
+    "@trigger.dev/sdk": "4.6.3",
+    "trigger.dev": "4.6.3",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "prettier": "3.6.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "4.1.7"
+  },
+  "version": "0.1.0",
+  "description": "A raw Trigger.dev task with resumable Claude Code, Codex, and Pi sessions.",
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
