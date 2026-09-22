@@ -1,12 +1,53 @@
 # Multi-harness POC
 
-Run Claude Code, Codex, and Pi in one conversation using a raw Trigger.dev task and sessions. Pick a harness for each turn. Each harness resumes its own native history and receives completed turns from the others.
+A **shared coding workspace with a chat UI**, where you choose **Claude Code, Codex, or Pi for each turn**. Trigger.dev manages the conversation and execution; each harness supplies its own agent loop, tools, and native history. The starter uses a raw Trigger.dev task and sessions.
 
-Conversations keep their full answers and native histories across worker restarts. Storage uses local files during development and an S3-compatible bucket for deployed workers. You can also use JuiceFS for workspace and native-session files without mounting a filesystem.
+For example: ask Claude to understand some code, switch to Codex to edit it, then ask Pi to review the changes.
 
-The frontend is plain HTML, CSS, and JavaScript. A Node server handles requests and streams output; the worker runs the harness SDKs. You do not need the Trigger.dev monorepo or a local platform stack.
+The frontend is plain HTML, CSS, and JavaScript, backed by a Node server. You do not need the Trigger.dev monorepo or a local platform stack.
 
-[Run locally](#run-it-locally) · [Explore your code](#explore-your-own-code) · [Code tour](#find-your-way-around-the-code) · [Deploy](#storage-and-deployment) · [Troubleshooting](#checks-and-troubleshooting)
+[How it works](#how-it-works) · [Features](#features) · [Run locally](#run-it-locally) · [Explore your code](#explore-your-own-code) · [Code tour](#find-your-way-around-the-code) · [Deploy](#storage-and-deployment) · [Troubleshooting](#checks-and-troubleshooting)
+
+## How it works
+
+```mermaid
+flowchart LR
+    Browser["Chat UI"] <--> Backend["Node backend"]
+    Backend <--> Session["Trigger.dev session"]
+    Session <--> Task["Raw Trigger.dev task"]
+    Task --> Harness["Selected harness"]
+    Harness <--> Workspace["Local workspace"]
+    Task <--> Storage["Durable storage"]
+```
+
+When you send a message:
+
+1. **The backend accepts the request.** Each request has a stable ID. The backend sends your prompt and harness choice through the Trigger.dev session. Each conversation processes one turn at a time.
+2. **The task prepares the workspace.** A new conversation starts from the sample files or code you imported. A fresh worker restores an existing conversation's latest saved files and native histories.
+3. **The selected harness runs.** It can inspect, search, create, and edit files. Text and tool activity stream back to the browser. These are ordinary local filesystem operations.
+4. **The turn is saved.** Changed files and native history are uploaded, then a commit record stores the answer and references to those files. The conversation advances to that record only after storage succeeds.
+5. **The task waits for another message.** Trigger.dev can checkpoint it while waiting. If the execution eventually ends, a later message can start a fresh run and restore the same conversation.
+
+**Switching harnesses preserves two kinds of context.** Each harness keeps its own native session. Separately, completed prompts and answers provide shared context between harnesses. Codex receives what Claude accomplished, and returning to Claude resumes Claude's own session with the intervening updates.
+
+**Files persist across worker restarts.** Local development can use a shared storage directory. Deployed workers use an S3-compatible object store. With the optional JuiceFS integration, workspace contents and native-session files go through JuiceFS; the tested setup uses Redis for metadata and S3 for file blocks. Answers and commit manifests remain in the application's object store. The frontend's SQLite database holds conversation ownership and its transcript cache.
+
+**The initial upload runs in the background during the first turn.** The worker freezes a separate copy of the starting files, then lets the harness work on the local workspace. Output streams while uploading continues; marking the turn saved waits for durability. Subsequent saves upload changed contents.
+
+## Features
+
+- **Per-turn harness selection**, with native session resumption and shared context across Claude Code, Codex, and Pi.
+- **Your own code as a workspace**, using the repository importer.
+- **File creation and editing** shared across harnesses.
+- **Streaming answers and tool activity** in a minimal frontend.
+- **Stop with rollback**, including during the initial background upload.
+- **Automatic retries and worker recovery** from saved state.
+- **Duplicate-request handling**, delivery retries, and reconnection after browser reload.
+- **Persistent conversations**, paginated transcripts, and retrievable older context.
+- **Local development and deployed workers**, with optional JuiceFS storage.
+- **Setup checks, automated tests, and cloud storage benchmarks.**
+
+Harness selection is manual, and edits affect the conversation's workspace copy. Shell commands are disabled. Git commits and PR creation, conversation branching, and per-tool approval UI would need additional implementation. The frontend uses browser-cookie ownership; hosting it for multiple users requires proper authentication.
 
 ## Run it locally
 
@@ -122,18 +163,6 @@ Read these files in order:
 | [`src/watch-output.ts`](src/watch-output.ts)                   | Reopen published-SDK output reads after idle EOF, preserving the cursor.                          |
 | [`public/app.js`](public/app.js)                               | Harness picker, streaming, Stop, local outbox, and conversation navigation.                       |
 | [`public/state.js`](public/state.js)                           | Merge server results with browser state without losing unconfirmed requests.                      |
-
-A turn follows this path:
-
-```text
-Browser -> Node backend -> session.in -> raw task -> chosen harness
-Browser <- SSE proxy    <- session.out <- native events + saved result
-```
-
-Two kinds of history are kept:
-
-- **Portable history:** completed prompts and answers shared with the next harness.
-- **Native history:** each harness's own session files and tool results. On return it gets only portable turns it has not seen.
 
 Each turn saves changed files as content-addressed objects, then saves an immutable commit containing the complete answer, native session handles, and a link to the previous turn. Only the commit reference and an in-flight request reference go into session metadata. Updating that reference commits the turn; partially uploaded state is never used as a completed result.
 
